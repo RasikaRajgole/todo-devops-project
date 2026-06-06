@@ -9,6 +9,12 @@ test('renders todo app title', () => {
 
 test('renders add button', () => {
   render(<App />);
-  const addButton = screen.getByText(/add/i);
+  const addButton = screen.getByRole('button', { name: /\+ add/i });
   expect(addButton).toBeInTheDocument();
+});
+
+test('renders input placeholder', () => {
+  render(<App />);
+  const input = screen.getByPlaceholderText(/what needs to be done/i);
+  expect(input).toBeInTheDocument();
 });
