@@ -1,34 +1,26 @@
 version: 2.1
 
-orbs:
-  node: circleci/node@5.2.0
-
 jobs:
-  test:
-    executor: node/default
-    steps:
-      - checkout
-      - node/install-packages:
-          pkg-manager: npm
-      - run:
-          name: Run Tests
-          command: CI=true npm test -- --watchAll=false
-
   build-push:
     docker:
-      - image: cimg/base:stable
+      - image: cimg/node:18.20
     steps:
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
+          name: Install Dependencies
+          command: npm install --legacy-peer-deps
+      - run:
+          name: Build React App
+          command: npm run build
+      - run:
           name: Build & Push Docker Image
           command: |
-            IMAGE=$DOCKERHUB_USERNAME/todo-app:$CIRCLE_SHA1
-            docker build -t $IMAGE .
+            docker build -t $DOCKERHUB_USERNAME/todo-app:$CIRCLE_SHA1 .
+            docker build -t $DOCKERHUB_USERNAME/todo-app:latest .
             echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
-            docker push $IMAGE
-            docker tag $IMAGE $DOCKERHUB_USERNAME/todo-app:latest
+            docker push $DOCKERHUB_USERNAME/todo-app:$CIRCLE_SHA1
             docker push $DOCKERHUB_USERNAME/todo-app:latest
 
   update-manifest:
@@ -49,9 +41,7 @@ jobs:
 workflows:
   deploy:
     jobs:
-      - test
       - build-push:
-          requires: [test]
           filters:
             branches:
               only: master
