@@ -1,0 +1,62 @@
+version: 2.1
+
+orbs:
+  node: circleci/node@5.2.0
+
+jobs:
+  test:
+    executor: node/default
+    steps:
+      - checkout
+      - node/install-packages:
+          pkg-manager: npm
+      - run:
+          name: Run Tests
+          command: CI=true npm test -- --watchAll=false
+
+  build-push:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build & Push Docker Image
+          command: |
+            IMAGE=$DOCKERHUB_USERNAME/todo-app:$CIRCLE_SHA1
+            docker build -t $IMAGE .
+            echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
+            docker push $IMAGE
+            docker tag $IMAGE $DOCKERHUB_USERNAME/todo-app:latest
+            docker push $DOCKERHUB_USERNAME/todo-app:latest
+
+  update-manifest:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run:
+          name: Update k8s image tag
+          command: |
+            sed -i "s|image: .*todo-app:.*|image: $DOCKERHUB_USERNAME/todo-app:$CIRCLE_SHA1|" k8s/deployment.yaml
+            git config user.email "ci@circleci.com"
+            git config user.name "CircleCI"
+            git add k8s/deployment.yaml
+            git commit -m "ci: update image to $CIRCLE_SHA1 [skip ci]"
+            git push https://$GITHUB_TOKEN@github.com/RasikaRajgole/todo-devops-project.git master
+
+workflows:
+  deploy:
+    jobs:
+      - test
+      - build-push:
+          requires: [test]
+          filters:
+            branches:
+              only: master
+      - update-manifest:
+          requires: [build-push]
+          filters:
+            branches:
+              only: master
