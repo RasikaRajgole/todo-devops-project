@@ -2,3 +2,8 @@ node_modules/
 build/
 dist/
 .env
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/errored.tfstate
+terraform/patch.json
