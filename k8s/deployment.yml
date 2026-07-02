@@ -15,6 +15,6 @@ spec:
     spec:
       containers:
         - name: todo-app
-          image: <your-dockerhub-username>/todo-app:latest
+          image: rasikarajgole/todo-app:latest
           ports:
             - containerPort: 3000
