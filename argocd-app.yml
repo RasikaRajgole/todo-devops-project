@@ -6,9 +6,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/RasikaRajgole/todo-devops-project
+    repoURL: https://github.com/RasikaRajgole/todo-devops-project.git
     targetRevision: HEAD
-    path: todo/k8s
+    path: k8s
   destination:
     server: https://kubernetes.default.svc
     namespace: default
