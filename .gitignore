@@ -7,3 +7,7 @@ terraform/*.tfstate
 terraform/*.tfstate.backup
 terraform/errored.tfstate
 terraform/patch.json
+.terraform/
+*.tfstate
+*.tfstate.backup
+errored.tfstate
