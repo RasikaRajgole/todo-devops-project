@@ -10,12 +10,12 @@ jobs:
           version: default
       - run:
           name: Build Docker Image
-          command: docker build -t $DOCKER_USERNAME/todo-app:$CIRCLE_SHA1 .
+          command: docker build -t rasikarajgole/todo-app:$CIRCLE_SHA1 .
       - run:
           name: Push to DockerHub
           command: |
             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-            docker push $DOCKER_USERNAME/todo-app:$CIRCLE_SHA1
+            docker push rasikarajgole/todo-app:$CIRCLE_SHA1
 
   update-manifest:
     docker:
@@ -27,7 +27,7 @@ jobs:
           command: |
             git config user.email "$GITHUB_EMAIL"
             git config user.name "CircleCI"
-            sed -i "s|image: $DOCKER_USERNAME/todo-app:.*|image: $DOCKER_USERNAME/todo-app:$CIRCLE_SHA1|g" k8s/deployment.yml
+            sed -i "s|image: rasikarajgole/todo-app:.*|image: rasikarajgole/todo-app:$CIRCLE_SHA1|g" k8s/deployment.yml
             git add k8s/deployment.yml
             git commit -m "update image tag to $CIRCLE_SHA1"
             git push https://$GITHUB_TOKEN@github.com/RasikaRajgole/todo-devops-project.git main
