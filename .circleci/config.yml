@@ -1,5 +1,8 @@
 version: 2.1
 
+orbs:
+  docker: circleci/docker@2.1.4
+
 jobs:
   build-and-push:
     docker:
@@ -9,12 +12,10 @@ jobs:
       - setup_remote_docker:
           version: default
       - run:
-          name: Build Docker Image
-          command: docker build -t rasikarajgole/todo-app:$CIRCLE_SHA1 .
-      - run:
-          name: Push to DockerHub
+          name: Build and Push Docker Image
           command: |
-            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            echo "$DOCKER_PASSWORD" | docker login --username rasikarajgole --password-stdin
+            docker build -t rasikarajgole/todo-app:$CIRCLE_SHA1 .
             docker push rasikarajgole/todo-app:$CIRCLE_SHA1
 
   update-manifest:
