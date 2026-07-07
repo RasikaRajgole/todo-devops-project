@@ -9,6 +9,11 @@ jobs:
       - setup_remote_docker:
           version: default
       - run:
+          name: Validate required environment variables
+          command: |
+            : "${DOCKER_USERNAME:?DOCKER_USERNAME must be set in CircleCI project settings}"
+            : "${DOCKER_PASSWORD:?DOCKER_PASSWORD must be set in CircleCI project settings}"
+      - run:
           name: Build Docker Image
           command: docker build -t $DOCKER_USERNAME/todo-app:$CIRCLE_SHA1 .
       - run:
