@@ -17,4 +17,4 @@ spec:
         - name: todo-app
           image: rasikarajgole/todo-app:latest
           ports:
-            - containerPort: 3000
+            - containerPort: 80
