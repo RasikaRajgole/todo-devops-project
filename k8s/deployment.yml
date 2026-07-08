@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: todo-app
-          image: rasikarajgole/todo-app:bcc198ddc9cad52644a80d2a289dbb6ae6e2ea52
+          image: rasikarajgole/todo-app:a72ea6b55bfe45cba7be9d3b630742c9a9dc678f
           ports:
             - containerPort: 80
           resources:
