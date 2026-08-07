@@ -82,6 +82,7 @@ function dueDateStatus(dateStr) {
 
 // ── Main App ────────────────────────────────────────────────────────────────
 export default function App() {
+  console.log("TaskFlow App component loaded - Pipeline verification test");
   const [todos, setTodos] = useLocalStorage('todos_v2', []);
   const [input, setInput] = useState('');
   const [priority, setPriority] = useState('medium');
