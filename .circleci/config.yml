@@ -4,6 +4,28 @@ orbs:
   docker: circleci/docker@2.1.4
 
 jobs:
+  test:
+    docker:
+      - image: cimg/node:18.20
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - node-deps-{{ checksum "package-lock.json" }}
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - save_cache:
+          key: node-deps-{{ checksum "package-lock.json" }}
+          paths:
+            - node_modules
+      - run:
+          name: Run tests
+          command: npm test -- --watchAll=false --passWithNoTests
+      - run:
+          name: Build check
+          command: npm run build
+
   build-and-push:
     docker:
       - image: cimg/base:stable
@@ -14,9 +36,11 @@ jobs:
       - run:
           name: Build and Push Docker Image
           command: |
-            echo "$DOCKER_PASSWORD" | docker login --username rasikarajgole --password-stdin
-            docker build -t rasikarajgole/todo-app:$CIRCLE_SHA1 .
-            docker push rasikarajgole/todo-app:$CIRCLE_SHA1
+            echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
+            docker build -t "$DOCKER_USERNAME/todo-app:$CIRCLE_SHA1" .
+            docker tag "$DOCKER_USERNAME/todo-app:$CIRCLE_SHA1" "$DOCKER_USERNAME/todo-app:latest"
+            docker push "$DOCKER_USERNAME/todo-app:$CIRCLE_SHA1"
+            docker push "$DOCKER_USERNAME/todo-app:latest"
 
   update-manifest:
     docker:
@@ -28,15 +52,21 @@ jobs:
           command: |
             git config user.email "$GITHUB_EMAIL"
             git config user.name "CircleCI"
-            sed -i "s|image: rasikarajgole/todo-app:.*|image: rasikarajgole/todo-app:$CIRCLE_SHA1|g" k8s/deployment.yml
+            sed -i "s|image: $DOCKER_USERNAME/todo-app:.*|image: $DOCKER_USERNAME/todo-app:$CIRCLE_SHA1|g" k8s/deployment.yml
             git add k8s/deployment.yml
-            git commit -m "update image tag to $CIRCLE_SHA1"
+            git commit -m "ci: update image tag to $CIRCLE_SHA1 [skip ci]"
             git push https://$GITHUB_TOKEN@github.com/RasikaRajgole/todo-devops-project.git main
 
 workflows:
-  deploy:
+  ci-cd:
     jobs:
+      - test:
+          filters:
+            branches:
+              only: main
       - build-and-push:
+          requires:
+            - test
           filters:
             branches:
               only: main

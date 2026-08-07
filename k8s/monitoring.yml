@@ -1,0 +1,245 @@
+# ============================================================
+# GRAFANA DATASOURCE — points to kube-prometheus-stack
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: monitoring
+data:
+  datasources.yml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
+        isDefault: true
+        editable: false
+---
+# ============================================================
+# GRAFANA DASHBOARD PROVIDER
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: monitoring
+data:
+  dashboards.yml: |
+    apiVersion: 1
+    providers:
+      - name: 'todo-app'
+        orgId: 1
+        folder: 'ToDo App'
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards
+---
+# ============================================================
+# GRAFANA DASHBOARD — ToDo App
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring
+data:
+  todo-app.json: |
+    {
+      "title": "ToDo App Overview",
+      "uid": "todo-app-overview",
+      "schemaVersion": 38,
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Running Pods",
+          "type": "stat",
+          "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+          "targets": [{
+            "expr": "count(kube_pod_status_phase{namespace=\"default\", phase=\"Running\"})",
+            "legendFormat": "Running"
+          }],
+          "options": { "colorMode": "background", "graphMode": "none" },
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }] } } }
+        },
+        {
+          "id": 2,
+          "title": "Pod Restarts (last 5m)",
+          "type": "stat",
+          "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+          "targets": [{
+            "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"default\"}[5m]))",
+            "legendFormat": "Restarts"
+          }],
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 3 }] } } }
+        },
+        {
+          "id": 3,
+          "title": "HPA Current / Max Replicas",
+          "type": "stat",
+          "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+          "targets": [
+            { "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"default\"}", "legendFormat": "Current" },
+            { "expr": "kube_horizontalpodautoscaler_spec_max_replicas{namespace=\"default\"}", "legendFormat": "Max" }
+          ],
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "blue", "value": null }] } } }
+        },
+        {
+          "id": 8,
+          "title": "Deployment Available Replicas",
+          "type": "stat",
+          "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+          "targets": [{
+            "expr": "kube_deployment_status_replicas_available{namespace=\"default\", deployment=\"todo-app\"}",
+            "legendFormat": "Available"
+          }],
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 1 }, { "color": "green", "value": 2 }] } } }
+        },
+        {
+          "id": 9,
+          "title": "Node CPU Utilisation %",
+          "type": "stat",
+          "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+          "targets": [{
+            "expr": "avg(rate(node_cpu_seconds_total{mode!=\"idle\"}[2m])) * 100",
+            "legendFormat": "CPU %"
+          }],
+          "fieldConfig": { "defaults": { "unit": "percent", "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 60 }, { "color": "red", "value": 80 }] } } }
+        },
+        {
+          "id": 10,
+          "title": "Node Memory Utilisation %",
+          "type": "stat",
+          "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+          "targets": [{
+            "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+            "legendFormat": "Memory %"
+          }],
+          "fieldConfig": { "defaults": { "unit": "percent", "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 }] } } }
+        },
+        {
+          "id": 4,
+          "title": "CPU Usage — todo-app pods",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+          "targets": [{
+            "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"default\", container=\"todo-app\"}[2m])) by (pod)",
+            "legendFormat": "{{ pod }}"
+          }],
+          "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2 } } }
+        },
+        {
+          "id": 5,
+          "title": "Memory Usage — todo-app pods",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+          "targets": [{
+            "expr": "sum(container_memory_usage_bytes{namespace=\"default\", container=\"todo-app\"}) by (pod)",
+            "legendFormat": "{{ pod }}"
+          }],
+          "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2 } } }
+        },
+        {
+          "id": 6,
+          "title": "Pod Restart Rate (per min)",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+          "targets": [{
+            "expr": "rate(kube_pod_container_status_restarts_total{namespace=\"default\"}[5m]) * 60",
+            "legendFormat": "{{ pod }}"
+          }],
+          "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2 } } }
+        },
+        {
+          "id": 11,
+          "title": "Network Receive — todo-app pods",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+          "targets": [
+            { "expr": "sum(rate(container_network_receive_bytes_total{namespace=\"default\"}[2m])) by (pod)", "legendFormat": "rx {{ pod }}" },
+            { "expr": "sum(rate(container_network_transmit_bytes_total{namespace=\"default\"}[2m])) by (pod)", "legendFormat": "tx {{ pod }}" }
+          ],
+          "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "lineWidth": 2 } } }
+        },
+        {
+          "id": 7,
+          "title": "Active Alerts",
+          "type": "alertlist",
+          "gridPos": { "x": 0, "y": 20, "w": 24, "h": 8 },
+          "options": { "alertName": "", "dashboardAlerts": false, "maxItems": 20, "stateFilter": { "firing": true, "pending": true } }
+        }
+      ]
+    }
+---
+# ============================================================
+# GRAFANA DEPLOYMENT
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:10.4.0
+          ports:
+            - containerPort: 3000
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: "admin"
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: "admin123"
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: "false"
+          volumeMounts:
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: dashboards
+              mountPath: /var/lib/grafana/dashboards
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+      volumes:
+        - name: datasources
+          configMap:
+            name: grafana-datasources
+        - name: dashboard-provider
+          configMap:
+            name: grafana-dashboard-provider
+        - name: dashboards
+          configMap:
+            name: grafana-dashboards
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  selector:
+    app: grafana
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 3000
