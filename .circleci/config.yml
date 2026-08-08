@@ -42,6 +42,28 @@ jobs:
             docker push "$DOCKER_USERNAME/todo-app:$CIRCLE_SHA1"
             docker push "$DOCKER_USERNAME/todo-app:latest"
 
+  security-scan:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: default
+      - run:
+          name: Install Trivy
+          command: |
+            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+      - run:
+          name: Scan Docker image for vulnerabilities
+          command: |
+            trivy image --exit-code 0 --severity HIGH,CRITICAL \
+              --format table "$DOCKER_USERNAME/todo-app:latest"
+      - run:
+          name: Fail on CRITICAL vulnerabilities
+          command: |
+            trivy image --exit-code 1 --severity CRITICAL \
+              --ignore-unfixed "$DOCKER_USERNAME/todo-app:latest"
+
   update-manifest:
     docker:
       - image: cimg/base:stable
@@ -70,9 +92,15 @@ workflows:
           filters:
             branches:
               only: main
-      - update-manifest:
+      - security-scan:
           requires:
             - build-and-push
+          filters:
+            branches:
+              only: main
+      - update-manifest:
+          requires:
+            - security-scan
           filters:
             branches:
               only: main
