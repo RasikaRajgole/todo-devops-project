@@ -1,0 +1,16 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:Scan"
+      ],
+      "Resource": "arn:aws:dynamodb:ap-south-1:256515745203:table/todos"
+    }
+  ]
+}

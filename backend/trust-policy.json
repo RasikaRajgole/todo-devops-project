@@ -1,0 +1,18 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::256515745203:oidc-provider/oidc.eks.ap-south-1.amazonaws.com/id/2261760800F7EDCC57DDF5ED5C99486B"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "oidc.eks.ap-south-1.amazonaws.com/id/2261760800F7EDCC57DDF5ED5C99486B:sub": "system:serviceaccount:default:todo-backend-sa",
+          "oidc.eks.ap-south-1.amazonaws.com/id/2261760800F7EDCC57DDF5ED5C99486B:aud": "sts.amazonaws.com"
+        }
+      }
+    }
+  ]
+}

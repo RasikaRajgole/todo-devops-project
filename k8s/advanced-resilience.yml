@@ -1,0 +1,75 @@
+# ============================================================
+# 1. VERTICAL POD AUTOSCALER (VPA)
+# Automatically tunes CPU/memory requests based on actual usage.
+# Works alongside HPA — HPA scales out, VPA right-sizes each pod.
+# ============================================================
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: todo-app-vpa
+  namespace: default
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: todo-app
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: todo-app
+        minAllowed:
+          cpu: 50m
+          memory: 64Mi
+        maxAllowed:
+          cpu: 500m
+          memory: 512Mi
+---
+# ============================================================
+# 2. POD DISRUPTION BUDGET (PDB)
+# Guarantees at least 1 pod is always running during:
+#   - Node drains (kubectl drain)
+#   - Cluster upgrades
+#   - Voluntary disruptions
+# This is what "zero downtime" actually means in production.
+# ============================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: todo-app-pdb
+  namespace: default
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: todo-app
+---
+# ============================================================
+# 3. NETWORK POLICY
+# Default-deny all ingress, then explicitly allow:
+#   - Port 80 from anywhere (app traffic)
+#   - Port 80 from monitoring namespace (Prometheus scraping)
+# Pods cannot talk to each other unless explicitly allowed.
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: todo-app-netpol
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: todo-app
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 80
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 80
