@@ -52,7 +52,8 @@ jobs:
       - run:
           name: Install Trivy
           command: |
-            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /home/circleci/bin
+            echo 'export PATH=$PATH:/home/circleci/bin' >> $BASH_ENV
       - run:
           name: Scan Docker image for vulnerabilities
           command: |
