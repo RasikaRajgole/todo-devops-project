@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: todo-app
-          image: rasikarajgole/todo-app:40cd300677c0f3b521de5e10746d37e3d8cb2d9c
+          image: rasikarajgole/todo-app:56889fb4556d941fc675805427f4ae7db2353f62
           ports:
             - containerPort: 80
           livenessProbe:
