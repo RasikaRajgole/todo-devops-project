@@ -2,17 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 
 const CATEGORIES = ['Personal', 'Work', 'Shopping', 'Health', 'Study', 'Other'];
+const API = '';
 
-function useLocalStorage(key, init) {
-  const [val, setVal] = useState(() => {
-    try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : init; }
-    catch { return init; }
-  });
-  useEffect(() => localStorage.setItem(key, JSON.stringify(val)), [key, val]);
-  return [val, setVal];
-}
-
-// ── Glitter canvas ──────────────────────────────────────────────────────────
 function GlitterCanvas() {
   const canvasRef = useRef(null);
   useEffect(() => {
@@ -68,7 +59,6 @@ function GlitterCanvas() {
   return <canvas id="glitter-canvas" ref={canvasRef} />;
 }
 
-// ── Due date helper ─────────────────────────────────────────────────────────
 function dueDateStatus(dateStr) {
   if (!dateStr) return null;
   const today = new Date(); today.setHours(0,0,0,0);
@@ -80,10 +70,8 @@ function dueDateStatus(dateStr) {
   return { label: `Due ${due.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`, cls: '' };
 }
 
-// ── Main App ────────────────────────────────────────────────────────────────
 export default function App() {
-  
-  const [todos, setTodos] = useLocalStorage('todos_v2', []);
+  const [todos, setTodos] = useState([]);
   const [input, setInput] = useState('');
   const [priority, setPriority] = useState('medium');
   const [category, setCategory] = useState('Personal');
@@ -94,28 +82,79 @@ export default function App() {
   const [editId, setEditId] = useState(null);
   const [editText, setEditText] = useState('');
 
-  const addTodo = useCallback(() => {
+  // Load todos from backend on mount
+  useEffect(() => {
+    fetch(`${API}/todos`)
+      .then(r => r.json())
+      .then(data => setTodos(data))
+      .catch(err => console.error('Failed to load todos:', err));
+  }, []);
+
+  const addTodo = useCallback(async () => {
     const text = input.trim();
     if (!text) return;
-    setTodos(prev => [{
-      id: Date.now(), text, priority, category,
-      dueDate, completed: false, createdAt: Date.now(),
-    }, ...prev]);
-    setInput('');
-    setDueDate('');
-  }, [input, priority, category, dueDate, setTodos]);
+    const newTodo = { text, priority, category, dueDate, completed: false, createdAt: Date.now() };
+    try {
+      const res = await fetch(`${API}/todos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTodo),
+      });
+      const saved = await res.json();
+      setTodos(prev => [saved, ...prev]);
+      setInput('');
+      setDueDate('');
+    } catch (err) {
+      console.error('Failed to add todo:', err);
+    }
+  }, [input, priority, category, dueDate]);
 
-  const toggle   = id => setTodos(p => p.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
-  const remove   = id => setTodos(p => p.filter(t => t.id !== id));
-  const clearDone = () => setTodos(p => p.filter(t => !t.completed));
+  const toggle = async (id) => {
+    const todo = todos.find(t => t.id === id);
+    try {
+      await fetch(`${API}/todos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: !todo.completed }),
+      });
+      setTodos(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+    } catch (err) {
+      console.error('Failed to toggle todo:', err);
+    }
+  };
 
-  const saveEdit = id => {
+  const remove = async (id) => {
+    try {
+      await fetch(`${API}/todos/${id}`, { method: 'DELETE' });
+      setTodos(prev => prev.filter(t => t.id !== id));
+    } catch (err) {
+      console.error('Failed to delete todo:', err);
+    }
+  };
+
+  const saveEdit = async (id) => {
     const text = editText.trim();
-    if (text) setTodos(p => p.map(t => t.id === id ? { ...t, text } : t));
+    if (text) {
+      try {
+        await fetch(`${API}/todos/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        setTodos(prev => prev.map(t => t.id === id ? { ...t, text } : t));
+      } catch (err) {
+        console.error('Failed to edit todo:', err);
+      }
+    }
     setEditId(null);
   };
 
-  // filter → search → sort
+  const clearDone = async () => {
+    const done = todos.filter(t => t.completed);
+    await Promise.all(done.map(t => fetch(`${API}/todos/${t.id}`, { method: 'DELETE' })));
+    setTodos(prev => prev.filter(t => !t.completed));
+  };
+
   let visible = todos.filter(t => {
     if (filter === 'active')    return !t.completed;
     if (filter === 'completed') return t.completed;
@@ -158,13 +197,11 @@ export default function App() {
       <GlitterCanvas />
       <div className="app">
 
-        {/* Header */}
         <div className="app-header">
           <h1>✨ TaskFlow</h1>
           <p>Your magical productivity companion</p>
         </div>
 
-        {/* Stats */}
         <div className="stats-bar">
           <div className="stat-card total">
             <span className="stat-num">{total}</span>
@@ -180,7 +217,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Progress */}
         <div className="progress-wrap">
           <div className="progress-label">
             <span>Progress</span>
@@ -191,7 +227,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Input */}
         <div className="input-section">
           <div className="input-row">
             <input
@@ -221,7 +256,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Search */}
         <div className="search-bar">
           <span className="search-icon">🔍</span>
           <input
@@ -232,7 +266,6 @@ export default function App() {
           />
         </div>
 
-        {/* Filters */}
         <div className="filters">
           {[
             { key: 'all', label: '📋 All' },
@@ -247,7 +280,6 @@ export default function App() {
           ))}
         </div>
 
-        {/* Sort */}
         <div className="sort-bar">
           <label>Sort by:</label>
           <select value={sortBy} onChange={e => setSortBy(e.target.value)}>
@@ -258,7 +290,6 @@ export default function App() {
           </select>
         </div>
 
-        {/* List */}
         {visible.length === 0 ? (
           <div className="empty-state">
             <div className="icon">✨</div>
@@ -302,7 +333,6 @@ export default function App() {
           </ul>
         )}
 
-        {/* Footer */}
         <div className="footer">
           <span>{activeCount} task{activeCount !== 1 ? 's' : ''} remaining</span>
           {doneCount > 0 && (
